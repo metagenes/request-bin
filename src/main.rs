@@ -56,10 +56,10 @@ async fn main() {
     fs::create_dir_all("data").expect("Gagal membuat folder data");
     fs::create_dir_all("static").expect("Gagal membuat folder static");
 
-    // Background Task: Pembersihan otomatis file > 2 jam
+    // Background Task: Pembersihan otomatis file > 4 jam
     tokio::spawn(async {
         loop {
-            cleanup_old_files("data", 2).await;
+            cleanup_old_files("data", 4).await;
             tokio::time::sleep(Duration::from_secs(3600)).await;
         }
     });
