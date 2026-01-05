@@ -138,7 +138,7 @@ if [ "$MANUAL_MODE" = false ]; then
     cd "$TEMP_DIR"
     
     # Download latest artifact
-    gh run download --name "${BINARY_NAME}-latest"
+    gh run download --repo "${REPO_OWNER}/${REPO_NAME}" --name "${BINARY_NAME}-latest"
     
     if [ ! -f "$BINARY_NAME" ]; then
         echo -e "${RED}❌ Binary not found in artifact${NC}"
