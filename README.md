@@ -4,9 +4,11 @@ A simple Request Bin written in Rust using the Axum web framework. This applicat
 
 ## 🌟 Features
 
+- **Web UI Management**: Modern web interface to manage bins and responses without code editor
 - **Capture HTTP Requests**: Captures all types of HTTP requests (GET, POST, PUT, DELETE, etc.)
 - **JSON Storage**: Stores each request in an easy-to-read JSON format
-- **Custom Response**: Configure response status code and body for each bin
+- **Custom Response**: Configure response status code and body for each bin via UI
+- **GitHub Actions CI/CD**: Build on GitHub runners, deploy to local server
 - **Auto Cleanup**: Automatically removes files older than 24 hours
 - **Memory Efficient**: Uses jemalloc for memory optimization, suitable for Mini PCs
 - **Lightweight & Fast**: High performance with low memory footprint
@@ -37,6 +39,81 @@ cargo run --release
 ```
 
 The server will run at `http://0.0.0.0:9997`
+
+## 🎨 Web UI
+
+Access the modern web interface at `http://localhost:9997` to:
+
+- **View All Bins**: See all your request bins in a beautiful card grid
+- **Create New Bins**: One-click bin creation
+- **Edit Responses**: Visual JSON editor with validation
+- **View Request Logs**: See recent requests captured by each bin
+- **Copy URLs**: Easy copy-to-clipboard for bin URLs
+
+### Features:
+- 🎨 Modern glassmorphism design with dark mode
+- ✨ Smooth animations and micro-interactions
+- 📱 Fully responsive layout
+- ✅ Real-time JSON validation
+- 🔄 Auto-refresh every 30 seconds
+
+## 🚢 Deployment
+
+### Local Build & Deploy
+
+For local compilation and deployment:
+
+```bash
+./update.sh
+```
+
+This will:
+1. Build the project locally with `cargo build --release`
+2. Strip the binary
+3. Restart the systemd service
+4. Show service status
+
+### GitHub Actions Build & Deploy
+
+For remote building (saves CPU/RAM on your Mini PC):
+
+```bash
+./update-github.sh
+```
+
+This will:
+1. Commit and push changes to GitHub
+2. Trigger GitHub Actions workflow
+3. Wait for build to complete on GitHub runners
+4. Download the compiled binary
+5. Deploy and restart the service
+
+**Benefits:**
+- ✅ No local compilation needed
+- ✅ Faster builds on GitHub infrastructure
+- ✅ Automatic artifact retention
+- ✅ Easy rollback capability
+
+**Setup GitHub Actions:**
+
+1. Push your code to GitHub:
+```bash
+git remote add origin https://github.com/YOUR_USERNAME/rust-request-bin.git
+git push -u origin main
+```
+
+2. Install GitHub CLI (optional, for automatic workflow monitoring):
+```bash
+sudo apt install gh
+gh auth login
+```
+
+3. Use the deployment script:
+```bash
+./update-github.sh "Your commit message"
+```
+
+Without GitHub CLI, the script will guide you to manually download the artifact.
 
 ## 📖 Usage
 
@@ -164,6 +241,7 @@ cleanup_old_files("data", 24).await;  // Change duration (in hours)
 - **uuid**: Generate unique identifiers
 - **walkdir**: Directory traversal
 - **jemallocator**: Memory allocation optimization
+- **tower-http**: HTTP middleware for CORS and static file serving
 
 ## 🛠️ Development
 

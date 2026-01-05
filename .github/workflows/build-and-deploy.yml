@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build Release Binary
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+          
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-git-
+          
+    - name: Cache target directory
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-target-
+    
+    - name: Build release binary
+      run: cargo build --release --verbose
+      
+    - name: Strip binary
+      run: strip target/release/rust-request-bin
+      
+    - name: Get binary info
+      run: |
+        ls -lh target/release/rust-request-bin
+        file target/release/rust-request-bin
+        
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-request-bin-${{ github.sha }}
+        path: target/release/rust-request-bin
+        retention-days: 7
+        
+    - name: Upload binary (latest)
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-request-bin-latest
+        path: target/release/rust-request-bin
+        retention-days: 30
+        
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Run tests
+      run: cargo test --verbose
