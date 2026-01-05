@@ -1,7 +1,7 @@
 use axum::{
     extract::Path,
     http::{HeaderMap, Method, StatusCode},
-    routing::{any, get},
+    routing::{any, get, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,8 @@ use std::{fs, time::Duration, collections::HashMap};
 use chrono::{Utc, Duration as ChronoDuration};
 use uuid::Uuid;
 use jemallocator::Jemalloc;
+use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -27,22 +29,49 @@ struct CustomResponse {
     body: serde_json::Value,
 }
 
+#[derive(Serialize)]
+struct BinInfo {
+    id: String,
+    url: String,
+    created: String,
+}
+
+#[derive(Serialize)]
+struct BinDetail {
+    id: String,
+    url: String,
+    response: CustomResponse,
+    recent_logs: Vec<RequestLog>,
+}
+
+#[derive(Deserialize)]
+struct UpdateResponse {
+    status: u16,
+    body: serde_json::Value,
+}
+
 #[tokio::main]
 async fn main() {
-    // Memastikan folder data ada untuk penyimpanan JSON
+    // Memastikan folder data dan static ada
     fs::create_dir_all("data").expect("Gagal membuat folder data");
+    fs::create_dir_all("static").expect("Gagal membuat folder static");
 
-    // Background Task: Pembersihan otomatis file > 24 jam
+    // Background Task: Pembersihan otomatis file > 2 jam
     tokio::spawn(async {
         loop {
-            cleanup_old_files("data", 24).await;
+            cleanup_old_files("data", 2).await;
             tokio::time::sleep(Duration::from_secs(3600)).await;
         }
     });
 
     let app = Router::new()
         .route("/bin/:id", any(capture_handler))
-        .route("/create", get(create_bin));
+        .route("/create", get(create_bin))
+        .route("/api/bins", get(list_bins))
+        .route("/api/bins/:id", get(get_bin_detail))
+        .route("/api/bins/:id/response", put(update_bin_response))
+        .nest_service("/", ServeDir::new("static"))
+        .layer(CorsLayer::permissive());
 
     let addr = "0.0.0.0:9997";
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -101,6 +130,112 @@ async fn capture_handler(
     }
 
     (StatusCode::OK, Json(serde_json::json!({"status": "captured"})))
+}
+
+async fn list_bins() -> Json<Vec<BinInfo>> {
+    let mut bins = Vec::new();
+    
+    if let Ok(entries) = fs::read_dir("data") {
+        for entry in entries.filter_map(|e| e.ok()) {
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                let id = entry.file_name().to_string_lossy().to_string();
+                let created = entry.metadata()
+                    .and_then(|m| m.created())
+                    .map(|t| {
+                        let dt: chrono::DateTime<Utc> = t.into();
+                        dt.to_rfc3339()
+                    })
+                    .unwrap_or_else(|_| "unknown".to_string());
+                
+                bins.push(BinInfo {
+                    id: id.clone(),
+                    url: format!("/bin/{}", id),
+                    created,
+                });
+            }
+        }
+    }
+    
+    Json(bins)
+}
+
+async fn get_bin_detail(Path(id): Path<String>) -> Result<Json<BinDetail>, StatusCode> {
+    let bin_path = format!("data/{}", id);
+    
+    if !std::path::Path::new(&bin_path).exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    
+    // Read response config
+    let config_path = format!("{}/response.json", bin_path);
+    let response = if let Ok(config_str) = fs::read_to_string(&config_path) {
+        serde_json::from_str::<CustomResponse>(&config_str).unwrap_or(CustomResponse {
+            status: 200,
+            body: serde_json::json!({"status": "ok"}),
+        })
+    } else {
+        CustomResponse {
+            status: 200,
+            body: serde_json::json!({"status": "ok"}),
+        }
+    };
+    
+    // Read recent logs (last 10)
+    let mut logs = Vec::new();
+    if let Ok(entries) = fs::read_dir(&bin_path) {
+        let mut log_files: Vec<_> = entries
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name().to_string_lossy().ends_with(".json") 
+                && e.file_name().to_string_lossy() != "response.json"
+            })
+            .collect();
+        
+        log_files.sort_by_key(|entry| {
+            std::cmp::Reverse(
+                entry.metadata()
+                    .and_then(|m| m.modified())
+                    .ok()
+            )
+        });
+        
+        for entry in log_files.iter().take(10) {
+            if let Ok(content) = fs::read_to_string(entry.path()) {
+                if let Ok(log) = serde_json::from_str::<RequestLog>(&content) {
+                    logs.push(log);
+                }
+            }
+        }
+    }
+    
+    Ok(Json(BinDetail {
+        id: id.clone(),
+        url: format!("/bin/{}", id),
+        response,
+        recent_logs: logs,
+    }))
+}
+
+async fn update_bin_response(
+    Path(id): Path<String>,
+    Json(update): Json<UpdateResponse>,
+) -> Result<StatusCode, StatusCode> {
+    let bin_path = format!("data/{}", id);
+    
+    if !std::path::Path::new(&bin_path).exists() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    
+    let custom_response = CustomResponse {
+        status: update.status,
+        body: update.body,
+    };
+    
+    let config_path = format!("{}/response.json", bin_path);
+    fs::write(config_path, serde_json::to_string_pretty(&custom_response).unwrap())
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    Ok(StatusCode::OK)
 }
 
 async fn cleanup_old_files(dir: &str, hours: i64) {

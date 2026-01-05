@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Bin Manager</title>
+    <meta name="description" content="Modern web interface for managing request bins and response configurations">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <span class="logo-icon">🚀</span>
+                    Request Bin Manager
+                </h1>
+                <p class="tagline">Manage your request bins with ease</p>
+            </div>
+            <button class="btn btn-primary" id="createBinBtn">
+                <span class="btn-icon">+</span>
+                Create New Bin
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Bins Grid -->
+            <section class="bins-section">
+                <h2 class="section-title">Your Bins</h2>
+                <div id="binsGrid" class="bins-grid">
+                    <!-- Bins will be loaded here -->
+                    <div class="loading">Loading bins...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bin Editor Modal -->
+        <div id="editorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Edit Response Configuration</h2>
+                    <button class="modal-close" id="closeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="bin-info">
+                        <div class="info-item">
+                            <label>Bin ID:</label>
+                            <div class="info-value">
+                                <code id="modalBinId"></code>
+                                <button class="btn-copy" id="copyBinId" title="Copy ID">📋</button>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <label>Endpoint URL:</label>
+                            <div class="info-value">
+                                <code id="modalBinUrl"></code>
+                                <button class="btn-copy" id="copyBinUrl" title="Copy URL">📋</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="editor-section">
+                        <h3>Response Configuration</h3>
+                        
+                        <div class="form-group">
+                            <label for="statusCode">HTTP Status Code</label>
+                            <select id="statusCode" class="form-control">
+                                <option value="200">200 OK</option>
+                                <option value="201">201 Created</option>
+                                <option value="204">204 No Content</option>
+                                <option value="400">400 Bad Request</option>
+                                <option value="401">401 Unauthorized</option>
+                                <option value="403">403 Forbidden</option>
+                                <option value="404">404 Not Found</option>
+                                <option value="500">500 Internal Server Error</option>
+                                <option value="502">502 Bad Gateway</option>
+                                <option value="503">503 Service Unavailable</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="responseBody">Response Body (JSON)</label>
+                            <textarea id="responseBody" class="form-control code-editor" rows="12" spellcheck="false"></textarea>
+                            <div id="jsonError" class="error-message"></div>
+                        </div>
+
+                        <button class="btn btn-primary btn-block" id="saveResponse">
+                            <span class="btn-icon">💾</span>
+                            Save Configuration
+                        </button>
+                    </div>
+
+                    <div class="logs-section">
+                        <h3>Recent Requests</h3>
+                        <div id="recentLogs" class="logs-container">
+                            <!-- Logs will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
