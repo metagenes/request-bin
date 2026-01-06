@@ -56,10 +56,10 @@ async fn main() {
     fs::create_dir_all("data").expect("Gagal membuat folder data");
     fs::create_dir_all("static").expect("Gagal membuat folder static");
 
-    // Background Task: Pembersihan otomatis file > 4 jam
+    // Background Task: Pembersihan otomatis file > 2 jam
     tokio::spawn(async {
         loop {
-            cleanup_old_files("data", 4).await;
+            cleanup_old_files("data", 2).await;
             tokio::time::sleep(Duration::from_secs(3600)).await;
         }
     });
@@ -240,6 +240,7 @@ async fn update_bin_response(
 
 async fn cleanup_old_files(dir: &str, hours: i64) {
     let now = Utc::now();
+    // 1. Bersihkan file lama
     for entry in walkdir::WalkDir::new(dir).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() {
             if let Ok(metadata) = entry.metadata() {
@@ -249,6 +250,16 @@ async fn cleanup_old_files(dir: &str, hours: i64) {
                         let _ = fs::remove_file(entry.path());
                     }
                 }
+            }
+        }
+    }
+
+    // 2. Hapus folder bin yang kosong
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                // remove_dir hanya berhasil jika folder kosong
+                let _ = fs::remove_dir(entry.path());
             }
         }
     }
