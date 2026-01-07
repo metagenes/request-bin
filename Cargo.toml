@@ -10,7 +10,7 @@ axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 # Serialisasi data
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 # Waktu dan ID unik dengan fitur 'v4'
 chrono = "0.4"
 uuid = { version = "1.0", features = ["v4"] }

@@ -232,7 +232,7 @@ async fn update_bin_response(
     };
     
     let config_path = format!("{}/response.json", bin_path);
-    fs::write(config_path, serde_json::to_string_pretty(&custom_response).unwrap())
+    fs::write(config_path, serde_json::to_string(&custom_response).unwrap())
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     Ok(StatusCode::OK)
