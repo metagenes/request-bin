@@ -1,4 +1,5 @@
 use axum::{
+    body::Bytes,
     extract::Path,
     http::{HeaderMap, Method, StatusCode},
     routing::{any, get, put},
@@ -59,7 +60,7 @@ async fn main() {
     // Background Task: Pembersihan otomatis file > 2 jam
     tokio::spawn(async {
         loop {
-            cleanup_old_files("data", 2).await;
+            cleanup_old_files("data", 100).await;
             tokio::time::sleep(Duration::from_secs(3600)).await;
         }
     });
@@ -98,7 +99,7 @@ async fn capture_handler(
     Path(id): Path<String>,
     method: Method,
     headers: HeaderMap,
-    body: String,
+    body: Bytes,
 ) -> (StatusCode, Json<serde_json::Value>) {
     let bin_path = format!("data/{}", id);
     
@@ -111,11 +112,12 @@ async fn capture_handler(
         .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
         .collect();
 
+    let body_str = String::from_utf8_lossy(&body);
     let log = RequestLog {
         timestamp: Utc::now().to_rfc3339(),
         method: method.to_string(),
         headers: header_map,
-        body: serde_json::from_str(&body).unwrap_or(serde_json::json!(body)),
+        body: serde_json::from_str(&body_str).unwrap_or(serde_json::json!(body_str)),
     };
 
     let filename = format!("{}/{}.json", bin_path, Utc::now().timestamp_millis());
